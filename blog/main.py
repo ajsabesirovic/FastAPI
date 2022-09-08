@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, status, Response, HTTPException
 from .database import engine,SessionLocal
 from .  import schemas, models
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ def get_db():
         db.close()
 
 
-@app.post('/blog')
+@app.post('/blog',status_code=status.HTTP_201_CREATED)
 def create(request: schemas.Blog, db: Session = Depends(get_db)):
     new_blog = models.Blog(title=request.title,body=request.body)
     db.add(new_blog)
@@ -29,6 +29,10 @@ def all( db: Session = Depends(get_db)):
 
 
 @app.get("/blogs/{id}",status_code=200)
-def get_blog(id,db: Session = Depends(get_db)):
+def get_blog(id,response: Response ,db: Session = Depends(get_db)):
     blog = db.query(models.Blog).filter(models.Blog.id == id).first()
+    if not blog:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,f"blog with id {id} is not available")
+        # response.status_code = status.HTTP_404_NOT_FOUND
+        # return {"detail":f"blog with id {id} is not available"}
     return blog
