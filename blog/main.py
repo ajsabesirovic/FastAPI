@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, status, HTTPException
 from .database import engine, SessionLocal
 from . import schemas, models
 from sqlalchemy.orm import Session
+from .hashing import Hash
 
 app = FastAPI()
 models.Base.metadata.create_all(engine)
@@ -13,6 +14,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 @app.get('/',response_model=List[schemas.ShowBlog])
 def all( db: Session = Depends(get_db)):
@@ -36,7 +38,7 @@ def update(id, request:schemas.Blog, db: Session = Depends(get_db)):
     return 'updated'
 
 @app.post('/blog',status_code=status.HTTP_201_CREATED)
-def create(request: schemas.Blog, db: Session = Depends(get_db)):
+def create_blog(request: schemas.Blog, db: Session = Depends(get_db)):
     new_blog = models.Blog(title=request.title,body=request.body)
     db.add(new_blog)
     db.commit()
@@ -52,3 +54,11 @@ def delete(id, db: Session = Depends(get_db)):
     db.commit()
     return {'done'}
 
+@app.post('/user')
+def create_user(request: schemas.User, db: Session = Depends(get_db)):
+    hashed_password = Hash.bcrypt(request.password)
+    new_user = models.User(name=request.name,email=request.email,password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
